@@ -1,0 +1,3 @@
+PASS: Core Guardrail MVP structure validated.
+PASS: Starbucks location example detected.
+PASS: Persisted store and test notification flow detected.
