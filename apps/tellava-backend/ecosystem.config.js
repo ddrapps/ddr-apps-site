@@ -1,0 +1,1 @@
+module.exports = { apps: [{ name: 'tellava-backend', script: './dist/index.js', cwd: '/var/www/ddrapps.ca/apps/tellava-backend', instances: 1, exec_mode: 'fork', env: { NODE_ENV: 'production', PORT: 4100 } }] };

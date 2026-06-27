@@ -1,0 +1,1 @@
+import { Router } from 'express'; const router = Router(); router.get('/config', (_req, res) => { res.json({ appName: 'Tellava', monthlyPriceUsd: 2.99, billingProvider: 'app-stores-only', iosProductId: 'tellava.monthly', androidProductId: 'tellava.monthly', entitlement: 'premium' }); }); export default router;

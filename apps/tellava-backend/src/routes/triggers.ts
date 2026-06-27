@@ -1,0 +1,1 @@
+import { Router } from 'express'; import { logTriggerEvent } from '../services/loggingService.js'; const router = Router(); router.post('/log', async (req, res) => { try { return res.json(await logTriggerEvent(req.body ?? {})); } catch { return res.status(500).json({ error: 'Failed to log trigger' }); } }); export default router;
