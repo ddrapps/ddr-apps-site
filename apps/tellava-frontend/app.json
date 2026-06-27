@@ -1,0 +1,29 @@
+{
+  "expo": {
+    "name": "Tellava",
+    "slug": "tellava-frontend",
+    "scheme": "tellava",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "plugins": [
+      "expo-router"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "ca.ddrapps.tellava"
+    },
+    "android": {
+      "package": "ca.ddrapps.tellava"
+    },
+    "web": {
+      "bundler": "metro"
+    }
+  }
+}
