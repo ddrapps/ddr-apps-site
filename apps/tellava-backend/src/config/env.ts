@@ -1,1 +1,0 @@
-import dotenv from 'dotenv'; dotenv.config(); export const env = { port: Number(process.env.PORT ?? 4100), nodeEnv: process.env.NODE_ENV ?? 'development', appOrigin: process.env.APP_ORIGIN ?? 'https://ddrapps.ca', googlePlacesApiKey: process.env.GOOGLE_PLACES_API_KEY ?? '' };
