@@ -7,7 +7,7 @@ import nearbyStoresRouter from './routes/nearbyStores';
 
 const app = express();
 
-app.use(cors({ origin: env.appOrigin === '*' ? true : env.appOrigin }));
+app.use(cors());
 app.use(express.json());
 app.use(morgan('dev'));
 
