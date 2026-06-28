@@ -3,6 +3,7 @@ import cors from 'cors';
 import morgan from 'morgan';
 import { env } from './config/env';
 import healthRouter from './routes/health';
+import nearbyStoresRouter from './routes/nearbyStores';
 
 const app = express();
 
@@ -18,6 +19,7 @@ app.get('/', (_req, res) => {
 });
 
 app.use('/api/health', healthRouter);
+app.use('/api/nearby-stores', nearbyStoresRouter);
 
 app.use((_req, res) => {
   res.status(404).json({ error: 'Not found' });
