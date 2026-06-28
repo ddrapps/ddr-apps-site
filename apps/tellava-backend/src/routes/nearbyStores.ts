@@ -1,91 +1,91 @@
+
 import { Router } from 'express';
 import { env } from '../config/env';
+import { listMonitoredStores } from '../store';
 
 const router = Router();
 
 router.post('/', async (req, res) => {
   try {
-    const { latitude, longitude } = req.body;
+    const { latitude, longitude, query } = req.body;
 
     if (typeof latitude !== 'number' || typeof longitude !== 'number') {
-      res.status(400).json({
-        ok: false,
-        error: 'latitude and longitude (numbers) are required'
-      });
+      res.status(400).json({ ok: false, error: 'latitude and longitude (numbers) are required' });
       return;
     }
 
     if (!env.googlePlacesApiKey) {
-      res.status(500).json({
-        ok: false,
-        error: 'Google Places API key is not configured on the server'
-      });
+      res.status(500).json({ ok: false, error: 'Google Places API key is not configured on the server' });
       return;
     }
 
-    const googleResponse = await fetch(
-      'https://places.googleapis.com/v1/places:searchNearby',
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Goog-Api-Key': env.googlePlacesApiKey,
-          'X-Goog-FieldMask':
-            'places.id,places.displayName,places.formattedAddress,places.location'
-        },
-        body: JSON.stringify({
-          includedTypes: [
-            'grocery_store',
-            'supermarket',
-            'convenience_store'
-          ],
-          maxResultCount: 10,
+    const fieldMask = 'places.id,places.displayName,places.formattedAddress,places.location,places.primaryType,places.types';
+    const body = query && String(query).trim()
+      ? {
+          textQuery: String(query).trim(),
+          maxResultCount: 20,
+          locationBias: {
+            circle: {
+              center: { latitude, longitude },
+              radius: env.storeSearchRadiusMeters,
+            },
+          },
+        }
+      : {
+          includedTypes: ['store', 'clothing_store', 'department_store', 'shoe_store', 'book_store', 'electronics_store', 'pet_store', 'sporting_goods_store', 'home_goods_store', 'furniture_store', 'gift_shop'],
+          maxResultCount: 20,
           locationRestriction: {
             circle: {
               center: { latitude, longitude },
-              radius: 5000
-            }
-          }
-        })
-      }
-    );
+              radius: env.storeSearchRadiusMeters,
+            },
+          },
+        };
+
+    const endpoint = query && String(query).trim()
+      ? 'https://places.googleapis.com/v1/places:searchText'
+      : 'https://places.googleapis.com/v1/places:searchNearby';
+
+    const googleResponse = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': env.googlePlacesApiKey,
+        'X-Goog-FieldMask': fieldMask,
+      },
+      body: JSON.stringify(body),
+    });
 
     const data = await googleResponse.json();
-
     if (!googleResponse.ok) {
-      res.status(502).json({
-        ok: false,
-        error: 'Google Places API error',
-        details: data
-      });
+      res.status(502).json({ ok: false, error: 'Google Places API error', details: data });
       return;
     }
 
-    const places = data.places ?? [];
-
-    const stores = places.map((place: any) => ({
-      placeId: place.id,
-      chainName: place.displayName?.text ?? 'Unknown store',
-      address: place.formattedAddress ?? 'No address available',
-      latitude: place.location?.latitude ?? latitude,
-      longitude: place.location?.longitude ?? longitude,
-      category: 'store',
-      defaultSpend: 0,
-      riskLevel: 'low',
-      score: 0
-    }));
-
-    res.json({
-      ok: true,
-      count: stores.length,
-      stores
+    const monitored = new Map(listMonitoredStores().map(store => [store.placeId, store]));
+    const places = Array.isArray(data.places) ? data.places : [];
+    const stores = places.map((place: any) => {
+      const existing = monitored.get(place.id);
+      return {
+        placeId: place.id,
+        chainName: place.displayName?.text ?? 'Unknown store',
+        address: place.formattedAddress ?? 'No address available',
+        latitude: place.location?.latitude ?? latitude,
+        longitude: place.location?.longitude ?? longitude,
+        category: place.primaryType || place.types?.[0] || 'store',
+        defaultSpend: existing?.defaultSpend ?? 0,
+        riskLevel: existing?.riskLevel ?? 'low',
+        score: existing?.score ?? 0,
+        visitCount: existing?.visitCount ?? 0,
+        monitored: Boolean(existing),
+        lastVisitAt: existing?.lastVisitAt ?? null,
+      };
     });
+
+    res.json({ ok: true, count: stores.length, stores });
   } catch (error) {
     console.error('Nearby stores error:', error);
-    res.status(500).json({
-      ok: false,
-      error: 'Failed to search nearby stores'
-    });
+    res.status(500).json({ ok: false, error: 'Failed to search nearby stores' });
   }
 });
 
