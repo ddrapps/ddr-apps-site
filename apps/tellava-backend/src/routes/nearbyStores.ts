@@ -1,4 +1,3 @@
-
 import { Router } from 'express';
 import { env } from '../config/env';
 import { listMonitoredStores } from '../store';
@@ -19,8 +18,12 @@ router.post('/', async (req, res) => {
       return;
     }
 
-    const fieldMask = 'places.id,places.displayName,places.formattedAddress,places.location,places.primaryType,places.types';
-    const body = query && String(query).trim()
+    const fieldMask =
+      'places.id,places.displayName,places.formattedAddress,places.location,places.primaryType,places.types';
+
+    const hasQuery = Boolean(query && String(query).trim());
+
+    const body = hasQuery
       ? {
           textQuery: String(query).trim(),
           maxResultCount: 20,
@@ -32,7 +35,6 @@ router.post('/', async (req, res) => {
           },
         }
       : {
-          includedTypes: ['store', 'clothing_store', 'department_store', 'shoe_store', 'book_store', 'electronics_store', 'pet_store', 'sporting_goods_store', 'home_goods_store', 'furniture_store', 'gift_shop'],
           maxResultCount: 20,
           locationRestriction: {
             circle: {
@@ -42,7 +44,7 @@ router.post('/', async (req, res) => {
           },
         };
 
-    const endpoint = query && String(query).trim()
+    const endpoint = hasQuery
       ? 'https://places.googleapis.com/v1/places:searchText'
       : 'https://places.googleapis.com/v1/places:searchNearby';
 
@@ -57,15 +59,18 @@ router.post('/', async (req, res) => {
     });
 
     const data = await googleResponse.json();
+
     if (!googleResponse.ok) {
       res.status(502).json({ ok: false, error: 'Google Places API error', details: data });
       return;
     }
 
-    const monitored = new Map(listMonitoredStores().map(store => [store.placeId, store]));
+    const monitored = new Map(listMonitoredStores().map((store) => [store.placeId, store]));
     const places = Array.isArray(data.places) ? data.places : [];
+
     const stores = places.map((place: any) => {
       const existing = monitored.get(place.id);
+
       return {
         placeId: place.id,
         chainName: place.displayName?.text ?? 'Unknown store',
@@ -90,3 +95,4 @@ router.post('/', async (req, res) => {
 });
 
 export default router;
+
