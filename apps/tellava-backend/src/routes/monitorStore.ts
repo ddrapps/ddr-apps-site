@@ -42,6 +42,6 @@ router.delete('/:placeId', (req, res) => {
     removed,
     monitoredCount: listMonitoredStores().length,
   });
-});
+}
 
 export default router;
