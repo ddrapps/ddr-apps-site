@@ -1,6 +1,6 @@
 
 import { Router } from 'express';
-import { upsertMonitoredStore, listMonitoredStores } from '../store';
+import { upsertMonitoredStore, listMonitoredStores, removeMonitoredStore } from '../store';
 
 const router = Router();
 
