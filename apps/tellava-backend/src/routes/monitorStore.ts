@@ -1,4 +1,4 @@
-
+import { Router } from 'express';
 import { upsertMonitoredStore, listMonitoredStores, removeMonitoredStore } from '../store';
 
 const router = Router();
@@ -42,6 +42,6 @@ router.delete('/:placeId', (req, res) => {
     removed,
     monitoredCount: listMonitoredStores().length,
   });
-}
+});
 
 export default router;
