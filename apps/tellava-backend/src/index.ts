@@ -1,26 +1,40 @@
-import cors from 'cors';
+
 import express from 'express';
-import enableMonitoringRoute from './routes/enableMonitoring';
-import healthRoute from './routes/health';
-import locationPingRoute from './routes/locationPing';
-import monitorStoreRoute from './routes/monitorStore';
-import nearbyStoresRoute from './routes/nearbyStores';
-import setRiskPingRoute from './routes/setRiskPing';
+import cors from 'cors';
+import morgan from 'morgan';
+import { env } from './config/env';
+import healthRouter from './routes/health';
+import nearbyStoresRouter from './routes/nearbyStores';
+import monitorStoreRouter from './routes/monitorStore';
+import setRiskPingRouter from './routes/setRiskPing';
+import locationPingRouter from './routes/locationPing';
+import enableMonitoringRouter from './routes/enableMonitoring';
 
 const app = express();
 
-app.use(cors());
+app.use(cors({ origin: env.appOrigin === '*' ? true : env.appOrigin }));
 app.use(express.json());
+app.use(morgan('dev'));
 
-app.use('/api/health', healthRoute);
-app.use('/api/enable-monitoring', enableMonitoringRoute);
-app.use('/api/location-ping', locationPingRoute);
-app.use('/api/monitor-store', monitorStoreRoute);
-app.use('/api/nearby-stores', nearbyStoresRoute);
-app.use('/api/set-risk-ping', setRiskPingRoute);
+app.get('/', (_req, res) => {
+  res.json({
+    message: 'Tellava backend is running',
+    health: '/api/health',
+    routes: ['/api/nearby-stores','/api/monitor-store','/api/set-risk-ping','/api/location-ping','/api/enable-monitoring']
+  });
+});
 
-const port = Number(process.env.PORT || 3000);
+app.use('/api/health', healthRouter);
+app.use('/api/nearby-stores', nearbyStoresRouter);
+app.use('/api/monitor-store', monitorStoreRouter);
+app.use('/api/set-risk-ping', setRiskPingRouter);
+app.use('/api/location-ping', locationPingRouter);
+app.use('/api/enable-monitoring', enableMonitoringRouter);
 
-app.listen(port, () => {
-  console.log(`Tellava backend listening on port ${port}`);
+app.use((_req, res) => {
+  res.status(404).json({ error: 'Not found' });
+});
+
+app.listen(env.port, () => {
+  console.log(`Tellava backend listening on port ${env.port}`);
 });
