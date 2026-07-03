@@ -1,5 +1,12 @@
 import { randomUUID } from 'crypto';
 import type { MonitorRecord, RiskLevel, StoreProxy } from './types';
+export function removeMonitoredStore(placeId: string) {
+  const existing = monitoredStores.get(placeId);
+  if (!existing) return null;
+
+  monitoredStores.delete(placeId);
+  return existing;
+}
 
 type MonitoringState = {
   enabled: boolean;
