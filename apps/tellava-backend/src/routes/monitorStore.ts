@@ -1,6 +1,6 @@
 
 import { Router } from 'express';
-import { upsertMonitoredStore, listMonitoredStores, removeMonitoredStore } from '../store';
+import { upsertMonitoredStore, listMonitoredStores } from '../store';
 
 const router = Router();
 
@@ -25,24 +25,5 @@ router.post('/', (req, res) => {
   });
   res.json({ ok: true, store, monitoredCount: listMonitoredStores().length });
 });
-router.delete('/:placeId', (req, res) => {
-  const placeId = req.params.placeId?.trim();
-
-  if (!placeId) {
-    return res.status(400).json({ error: 'placeId is required.' });
-  }
-
-  const removed = removeMonitoredStore(placeId);
-
-  if (!removed) {
-    return res.status(404).json({ error: 'Monitored store not found.' });
-  }
-
-  return res.json({
-    ok: true,
-    removed,
-    monitoredCount: listMonitoredStores().length,
-  });
-}
 
 export default router;
