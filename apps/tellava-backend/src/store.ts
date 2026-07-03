@@ -31,8 +31,16 @@ export function getMonitoredStore(placeId: string) {
 
 export function upsertMonitoredStore(input: StoreProxy) {
   const now = new Date().toISOString();
-  const existing = monitoredStores.get(input.placeId);
+  const existing = monitoredStores.get(input.placeId) {
 
+  export function removeMonitoredStore(placeId: string) {
+  const existing = monitoredStores.get(placeId);
+  if (!existing) return null;
+
+  monitoredStores.delete(placeId);
+  return existing;
+}
+  
   const resolvedRiskLevel = input.riskLevel || existing?.riskLevel || 'low';
 
   const record: MonitorRecord = {
@@ -58,14 +66,6 @@ export function upsertMonitoredStore(input: StoreProxy) {
 
   monitoredStores.set(record.placeId, record);
   return record;
-}
-
-export function removeMonitoredStore(placeId: string) {
-  const existing = monitoredStores.get(placeId);
-  if (!existing) return null;
-
-  monitoredStores.delete(placeId);
-  return existing;
 }
 
 export function setMonitoringEnabled(enabled: boolean, notificationToken?: string | null) {
