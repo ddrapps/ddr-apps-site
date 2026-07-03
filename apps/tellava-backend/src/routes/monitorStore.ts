@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { removeMonitoredStore, saveMonitoredStore, getMonitoredStores } from '../store';
+import { listMonitoredStores, removeMonitoredStore, upsertMonitoredStore } from '../store';
 import type { StoreProxy } from '../types';
 
 const router = Router();
@@ -13,7 +13,7 @@ router.post('/', (req, res) => {
     });
   }
 
-  const saved = saveMonitoredStore({
+  const saved = upsertMonitoredStore({
     ...store,
     monitored: true,
   });
@@ -21,7 +21,7 @@ router.post('/', (req, res) => {
   return res.json({
     ok: true,
     store: saved,
-    monitoredCount: getMonitoredStores().length,
+    monitoredCount: listMonitoredStores().length,
   });
 });
 
@@ -45,7 +45,7 @@ router.delete('/:placeId', (req, res) => {
   return res.json({
     ok: true,
     removed,
-    monitoredCount: getMonitoredStores().length,
+    monitoredCount: listMonitoredStores().length,
   });
 });
 
