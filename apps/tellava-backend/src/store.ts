@@ -105,3 +105,11 @@ export function bumpVisit(placeId: string) {
   monitoredStores.set(placeId, updated);
   return updated;
 }
+
+export function removeMonitoredStore(placeId: string) {
+  const existing = monitoredStores.get(placeId);
+  if (!existing) return null;
+
+  monitoredStores.delete(placeId);
+  return existing;
+}
