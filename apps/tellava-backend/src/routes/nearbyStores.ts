@@ -79,8 +79,6 @@ router.post('/', async (req, res) => {
         longitude: place.location?.longitude ?? longitude,
         category: place.primaryType || place.types?.[0] || 'store',
         defaultSpend: existing?.defaultSpend ?? 0,
-        riskLevel: existing?.riskLevel ?? 'low',
-        score: existing?.score ?? 0,
         visitCount: existing?.visitCount ?? 0,
         monitored: Boolean(existing),
         lastVisitAt: existing?.lastVisitAt ?? null,
