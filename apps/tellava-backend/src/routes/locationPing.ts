@@ -29,15 +29,13 @@ router.post('/', (req, res) => {
     visits.push({
       placeId: updated.placeId,
       chainName: updated.chainName,
-      riskLevel: updated.riskLevel,
-      score: updated.score,
       visitCount: updated.visitCount,
       distanceMeters: Math.round(match.distanceMeters),
       timestamp: timestamp || new Date().toISOString(),
     });
     alerts.push({
       title: `${updated.chainName} nearby`,
-      message: `Risk is ${updated.riskLevel}. Visits: ${updated.visitCount}. Score: ${updated.score}.`,
+      message: `Visits: ${updated.visitCount}.`,
       placeId: updated.placeId,
     });
   }
