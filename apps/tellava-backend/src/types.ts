@@ -9,8 +9,6 @@ export type StoreProxy = {
   longitude: number;
   category: string;
   defaultSpend: number;
-  riskLevel: RiskLevel;
-  score: number;
   visitCount?: number;
   monitored?: boolean;
   lastVisitAt?: string | null;
