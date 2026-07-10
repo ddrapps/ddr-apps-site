@@ -4,7 +4,7 @@ import { upsertMonitoredStore, listMonitoredStores, removeMonitoredStore } from 
 const router = Router();
 
 router.post('/', (req, res) => {
-  const { placeId, chainName, address, latitude, longitude, category, defaultSpend, riskLevel, score, visitCount } = req.body;
+  const { placeId, chainName, address, latitude, longitude, category, defaultSpend, visitCount } = req.body;
   if (!placeId || !chainName) {
     res.status(400).json({ ok: false, error: 'placeId and chainName are required' });
     return;
@@ -17,8 +17,6 @@ router.post('/', (req, res) => {
     longitude: typeof longitude === 'number' ? longitude : 0,
     category: category || 'store',
     defaultSpend: typeof defaultSpend === 'number' ? defaultSpend : 0,
-    riskLevel: riskLevel || 'low',
-    score: typeof score === 'number' ? score : 0,
     visitCount: typeof visitCount === 'number' ? visitCount : 0,
     monitored: true,
   });
