@@ -2,8 +2,8 @@ import { Router } from 'express';
 import { env } from '../config/env';
 import {
   bumpVisit,
+  getDwellState,
   getMonitoringState,
-  getPresenceState,
   listMonitoredStores,
   markAlerted,
   markEntered,
@@ -14,11 +14,9 @@ import { haversineMeters } from '../utils';
 const router = Router();
 
 const DWELL_MS = 3 * 60 * 1000;
-const COOLDOWN_MS = 60 * 60 * 1000;
 
 router.post('/', (req, res) => {
   const { latitude, longitude, timestamp } = req.body || {};
-
   if (typeof latitude !== 'number' || typeof longitude !== 'number') {
     res.status(400).json({ ok: false, error: 'latitude and longitude (numbers) are required' });
     return;
@@ -57,25 +55,18 @@ router.post('/', (req, res) => {
 
   for (const match of nearbyMatches.slice(0, 3)) {
     const placeId = match.store.placeId;
-    let presence = getPresenceState(placeId);
+    let dwell = getDwellState(placeId);
 
-    if (!presence || !presence.enteredAt) {
+    if (!dwell || !dwell.enteredAt) {
       markEntered(placeId, nowIso);
       continue;
     }
 
-    if (presence.cooldownUntil) {
-      const cooldownUntilMs = Date.parse(presence.cooldownUntil);
-      if (!Number.isNaN(cooldownUntilMs) && nowMs < cooldownUntilMs) {
-        continue;
-      }
-    }
-
-    if (presence.alertedAt && presence.enteredAt) {
+    if (dwell.alertedAt) {
       continue;
     }
 
-    const enteredAtMs = Date.parse(presence.enteredAt);
+    const enteredAtMs = Date.parse(dwell.enteredAt);
     if (Number.isNaN(enteredAtMs)) {
       markEntered(placeId, nowIso);
       continue;
@@ -89,8 +80,7 @@ router.post('/', (req, res) => {
     const updated = bumpVisit(placeId);
     if (!updated) continue;
 
-    const cooldownUntilIso = new Date(nowMs + COOLDOWN_MS).toISOString();
-    markAlerted(placeId, nowIso, cooldownUntilIso);
+    markAlerted(placeId, nowIso);
 
     visits.push({
       placeId: updated.placeId,
@@ -98,14 +88,13 @@ router.post('/', (req, res) => {
       visitCount: updated.visitCount,
       distanceMeters: Math.round(match.distanceMeters),
       dwellSeconds: Math.round(dwellMs / 1000),
-      cooldownUntil: cooldownUntilIso,
-      timestamp: nowIso
+      timestamp: nowIso,
     });
 
     alerts.push({
       title: `${updated.chainName} nearby`,
-      message: `Visit recorded after ${Math.round(dwellMs / 60000)} minute(s) in range.`,
-      placeId: updated.placeId
+      message: `Visits: ${updated.visitCount}.`,
+      placeId: updated.placeId,
     });
   }
 
