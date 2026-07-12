@@ -44,7 +44,7 @@ router.post('/', (req, res) => {
   );
 
   if (nearbyMatches.length === 0) {
-  clearAllDwellStates();
+  clearAllDwellState();
 
   res.json({
     ok: true,
