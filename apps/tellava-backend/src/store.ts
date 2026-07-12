@@ -102,7 +102,7 @@ export function markAlerted(placeId: string, alertedAt?: string) {
   return nextState;
 }
 
-export function clearAllDwellStates() {
+export function clearAllDwellState() {
   dwellStates.clear();
 }
 
