@@ -102,8 +102,8 @@ export function markAlerted(placeId: string, alertedAt?: string) {
   return nextState;
 }
 
-export function clearDwellState(placeId: string) {
-  dwellStates.delete(placeId);
+export function clearAllDwellState() {
+  dwellStates.clear();
 }
 
 export function bumpVisit(placeId: string) {
