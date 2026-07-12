@@ -14,7 +14,7 @@ import { haversineMeters } from '../utils';
 
 const router = Router();
 
-const DWELL_MS = 2.5 * 60 * 1000;
+const DWELL_MS = 2 * 60 * 1000;
 
 router.post('/', (req, res) => {
   const { latitude, longitude, timestamp } = req.body || {};
