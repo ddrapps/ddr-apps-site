@@ -7,7 +7,8 @@ import {
   listMonitoredStores,
   markAlerted,
   markEntered,
-  markExited
+  markExited,
+  clearAllDwellState
 } from '../store';
 import { haversineMeters } from '../utils';
 
@@ -41,6 +42,19 @@ router.post('/', (req, res) => {
   const nearbyMatches = allMatches.filter(
     (item) => item.distanceMeters <= env.visitTriggerMeters
   );
+
+  if (nearbyMatches.length === 0) {
+  clearAllDwellStates();
+
+  res.json({
+    ok: true,
+    monitoringEnabled: monitoring.enabled,
+    monitoredCount: stores.length,
+    visits: [],
+    alerts: []
+  });
+  return;
+}
 
   const insidePlaceIds = new Set(nearbyMatches.map((item) => item.store.placeId));
 
