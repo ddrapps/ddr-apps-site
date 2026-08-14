@@ -37,7 +37,10 @@ export function upsertMonitoredStore(input: StoreProxy) {
     longitude: input.longitude,
     category: input.category || 'store',
     defaultSpend: typeof input.defaultSpend === 'number' ? input.defaultSpend : 0,
-    visitCount: input.visitCount ?? existing?.visitCount ?? 0,
+    visitCount: Math.max(
+  input.visitCount ?? 0,
+  existing?.visitCount ?? 0
+),
     monitored: true,
     lastVisitAt: existing?.lastVisitAt ?? null,
     createdAt: existing?.createdAt ?? now,
