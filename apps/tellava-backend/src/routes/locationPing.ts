@@ -106,8 +106,8 @@ router.post('/', (req, res) => {
     });
 
     alerts.push({
-      title: `${updated.chainName} nearby`,
-      message: `Visits: ${updated.visitCount}.`,
+      title: `Visited: ${updated.chainName} `,
+      message: `Include what was spent in upcoming prompt`,
       placeId: updated.placeId,
     });
   }
