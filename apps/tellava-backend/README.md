@@ -17,7 +17,7 @@ Tellava backend for store discovery, monitoring, risk updates, and background lo
 - APP_ORIGIN=*
 - GOOGLE_PLACES_API_KEY=your-key
 - STORE_SEARCH_RADIUS_METERS=5000
-- VISIT_TRIGGER_METERS=300
+- VISIT_TRIGGER_METERS=200
 - GEOFENCE_TRIGGER_METERS=30
 
 ## Notes
