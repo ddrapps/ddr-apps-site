@@ -1,4 +1,4 @@
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://tellava.onrender.com';
+const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://tellava-back.onrender.com';
 
 export function getApiBaseUrl() {
   return API_URL.replace(/\/$/, '');
