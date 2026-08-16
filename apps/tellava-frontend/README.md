@@ -6,7 +6,7 @@ Expo + React Native starter frontend for Tellava.
 
 1. Copy `.env.example` to `.env`
 2. Ensure the API URL points to your backend:
-   - `EXPO_PUBLIC_API_URL=https://tellava.onrender.com`
+   - `EXPO_PUBLIC_API_URL=https://tellava-back.onrender.com`
 3. Install dependencies:
    - `npm install`
 4. Start development:
