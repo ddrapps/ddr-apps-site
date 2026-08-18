@@ -240,25 +240,24 @@ async function fetchPartsFromApi(vehicleId, categoryKeyword) {
       `/category/search-for-the-commodity-group-tree-by-description/type-id/${TYPE_PASSENGER}/lang-id/${LANG_EN}/search-text/${encodeURIComponent(categoryKeyword)}`
     );
 
-    function extractFirstId(node) {
-  if (!node) return null;
-  if (node.productId) return node.productId;
-  if (node.categoryId) return node.categoryId;
-  if (node.id) return node.id;
-  if (Array.isArray(node.children) && node.children.length > 0) {
-    return extractFirstId(node.children[0]);
-  }
-  if (Array.isArray(node)) return extractFirstId(node[0]);
-  return null;
-}
+    function findProductId(obj) {
+      if (!obj || typeof obj !== 'object') return null;
+      if (obj.productId) return obj.productId;
+      for (const key of Object.keys(obj)) {
+        if (key === 'children') continue;
+        const result = findProductId(obj[key]);
+        if (result) return result;
+      }
+      if (obj.children) return findProductId(obj.children);
+      return null;
+    }
 
-    const categories = catData?.data || catData?.categories || catData || [];
-    const categoryId = extractFirstId(Array.isArray(categories) ? categories[0] : categories);
-    if (!categoryId) return [];
+    const productId = findProductId(catData);
+    if (!productId) return [];
 
     const artData = await autopartsGet(
-  `/articles/list/type-id/${TYPE_PASSENGER}/vehicle-id/${vehicleId}/category-id/${categoryId}/lang-id/${LANG_EN}/country-filter-id/${COUNTRY_GLOBAL}`
-);
+      `/articles/list/type-id/${TYPE_PASSENGER}/vehicle-id/${vehicleId}/category-id/${productId}/lang-id/${LANG_EN}`
+    );
 
     const articles = artData?.articles || artData?.data || [];
 
