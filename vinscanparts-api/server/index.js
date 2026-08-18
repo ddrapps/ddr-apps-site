@@ -241,23 +241,24 @@ async function fetchPartsFromApi(vehicleId, categoryKeyword) {
     );
 
     function extractFirstId(node) {
-      if (!node) return null;
-      if (node.categoryId) return node.categoryId;
-      if (node.id) return node.id;
-      if (Array.isArray(node.children) && node.children.length > 0) {
-        return extractFirstId(node.children[0]);
-      }
-      if (Array.isArray(node)) return extractFirstId(node[0]);
-      return null;
-    }
+  if (!node) return null;
+  if (node.productId) return node.productId;
+  if (node.categoryId) return node.categoryId;
+  if (node.id) return node.id;
+  if (Array.isArray(node.children) && node.children.length > 0) {
+    return extractFirstId(node.children[0]);
+  }
+  if (Array.isArray(node)) return extractFirstId(node[0]);
+  return null;
+}
 
     const categories = catData?.data || catData?.categories || catData || [];
     const categoryId = extractFirstId(Array.isArray(categories) ? categories[0] : categories);
     if (!categoryId) return [];
 
     const artData = await autopartsGet(
-      `/articles/list/type-id/${TYPE_PASSENGER}/vehicle-id/${vehicleId}/category-id/${categoryId}/lang-id/${LANG_EN}`
-    );
+  `/articles/list/type-id/${TYPE_PASSENGER}/vehicle-id/${vehicleId}/category-id/${categoryId}/lang-id/${LANG_EN}/country-filter-id/${COUNTRY_GLOBAL}`
+);
 
     const articles = artData?.articles || artData?.data || [];
 
