@@ -240,17 +240,27 @@ async function fetchPartsFromApi(vehicleId, categoryKeyword) {
       `/category/search-for-the-commodity-group-tree-by-description/type-id/${TYPE_PASSENGER}/lang-id/${LANG_EN}/search-text/${encodeURIComponent(categoryKeyword)}`
     );
 
-    function findProductId(obj) {
-      if (!obj || typeof obj !== 'object') return null;
-      if (obj.productId) return obj.productId;
-      for (const key of Object.keys(obj)) {
-        if (key === 'children') continue;
-        const result = findProductId(obj[key]);
-        if (result) return result;
-      }
-      if (obj.children) return findProductId(obj.children);
-      return null;
+    function findProductId(obj, keyword) {
+  if (!obj || typeof obj !== 'object') return null;
+  const keyLower = keyword.toLowerCase();
+  // Check direct match on this node's name
+  for (const key of Object.keys(obj)) {
+    const val = obj[key];
+    if (!val || typeof val !== 'object') continue;
+    if (key.toLowerCase() === keyLower && val.productId) return val.productId;
+  }
+  // Then try partial match
+  for (const key of Object.keys(obj)) {
+    const val = obj[key];
+    if (!val || typeof val !== 'object') continue;
+    if (key.toLowerCase().includes(keyLower) && val.productId) return val.productId;
+    if (val.children) {
+      const result = findProductId(val.children, keyword);
+      if (result) return result;
     }
+  }
+  return null;
+}
 
     const productId = findProductId(catData);
     if (!productId) return [];
