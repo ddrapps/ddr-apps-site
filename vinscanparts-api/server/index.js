@@ -178,14 +178,14 @@ async function findVehicleId(make, model, year) {
     const makeLower = make.toLowerCase();
 
     const manufacturer = makers.find(m =>
-    (m.manuName || m.name || '').toLowerCase() === makeLower
+    (m.manufacturerName || m.manuName || m.name || '').toLowerCase() === makeLower
   ) || makers.find(m =>
-    (m.manuName || m.name || '').toLowerCase().includes(makeLower) &&
-    !(m.manuName || m.name || '').includes('(')
+    (m.manufacturerName || m.manuName || m.name || '').toLowerCase().includes(makeLower) &&
+    !(m.manufacturerName || m.manuName || m.name || '').includes('(')
   );
     if (!manufacturer) return null;
 
-    const manufacturerId = manufacturer.manuId || manufacturer.id;
+    const manufacturerId = manufacturer.manufacturerId || manufacturer.manuId || manufacturer.id;
 
     const modelData = await autopartsGet(
       `/models/list/type-id/${TYPE_PASSENGER}/manufacturer-id/${manufacturerId}/lang-id/${LANG_EN}/country-filter-id/${COUNTRY_GLOBAL}`
