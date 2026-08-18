@@ -239,10 +239,11 @@ function findCategoryId(obj, keyword) {
     if (key.toLowerCase() === kw && val.categoryId) return val.categoryId;
   }
 
-  // Second pass: partial match at this level
+    // Second pass: partial match at this level (skip sub-categories with commas)
   for (const key of Object.keys(obj)) {
     const val = obj[key];
     if (!val || typeof val !== 'object') continue;
+    if (key.includes(',')) continue;
     if (key.toLowerCase().includes(kw) && val.categoryId) return val.categoryId;
   }
 
