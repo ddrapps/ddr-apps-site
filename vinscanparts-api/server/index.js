@@ -307,8 +307,7 @@ app.post('/api/decode-vin', async (req, res) => {
       try {
         const match = await findVehicleId(vehicle.make, vehicle.model, vehicle.year);
         if (match) {
-          const vehicleId = await findVehicleVariant(match.modelId, vehicle.year);
-          if (vehicleId) vehicle.kType = String(vehicleId);
+                    vehicle.kType = String(match.modelId);
         }
       } catch (e) {
         console.warn('apiprofile VIN enrich failed:', e.message);
@@ -341,7 +340,7 @@ app.post('/api/parts', async (req, res) => {
       if (!vehicleId) {
         const match = await findVehicleId(vehicle.make, vehicle.model, vehicle.year);
         if (match) {
-          vehicleId = await findVehicleVariant(match.modelId, vehicle.year);
+                    vehicleId = match.modelId;
         }
       }
 
