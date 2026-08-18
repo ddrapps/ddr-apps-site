@@ -178,11 +178,11 @@ async function findVehicleId(make, model, year) {
     const makeLower = make.toLowerCase();
 
     const manufacturer = makers.find(m =>
-    (m.manufacturerName || m.manuName || m.name || '').toLowerCase() === makeLower
-  ) || makers.find(m =>
-    (m.manufacturerName || m.manuName || m.name || '').toLowerCase().includes(makeLower) &&
-    !(m.manufacturerName || m.manuName || m.name || '').includes('(')
-  );
+      (m.manufacturerName || m.manuName || m.name || '').toLowerCase() === makeLower
+    ) || makers.find(m =>
+      (m.manufacturerName || m.manuName || m.name || '').toLowerCase().includes(makeLower) &&
+      !(m.manufacturerName || m.manuName || m.name || '').includes('(')
+    );
     if (!manufacturer) return null;
 
     const manufacturerId = manufacturer.manufacturerId || manufacturer.manuId || manufacturer.id;
@@ -212,26 +212,50 @@ async function findVehicleId(make, model, year) {
   }
 }
 
-async function findVehicleVariant(modelId, year) {
-  try {
-    const data = await autopartsGet(
-      `/types/type-id/${TYPE_PASSENGER}/list-vehicles-types/${modelId}/lang-id/${LANG_EN}/country-filter-id/${COUNTRY_GLOBAL}`
-    );
-    const variants = data?.vehicleTypes || data?.data || [];
-    const yearNum = parseInt(year, 10);
+/**
+ * Walk the category search response (a nested object with string keys) and
+ * find the categoryId that best matches the keyword.
+ *
+ * The response looks like:
+ * {
+ *   "Engine Oil": { categoryId: 100258, level: 1, children: { ... } },
+ *   "Oil Filter":  { categoryId: 100259, level: 1, children: { ... } },
+ *   ...
+ * }
+ *
+ * Strategy:
+ *  1. Exact key match (case-insensitive) → return that node's categoryId
+ *  2. Key contains keyword → return that node's categoryId
+ *  3. Recurse into children objects
+ */
+function findCategoryId(obj, keyword) {
+  if (!obj || typeof obj !== 'object') return null;
+  const kw = keyword.toLowerCase();
 
-    const matching = variants.filter(v => {
-      const from = parseInt((v.modelYearFrom || v.constructionFrom || v.yearFrom || '0').substring(0, 4), 10);
-      const to   = parseInt((v.modelYearTo   || v.constructionTo   || v.yearTo   || '9999').substring(0, 4), 10);
-      return yearNum >= from && yearNum <= to;
-    });
-
-    if (matching.length === 0) return variants[0]?.modelId || variants[0]?.vehicleId || variants[0]?.id || null;
-    return matching[0].modelId || matching[0].vehicleId || matching[0].id;
-  } catch (e) {
-    console.error('findVehicleVariant error:', e.message);
-    return null;
+  // First pass: exact match at this level
+  for (const key of Object.keys(obj)) {
+    const val = obj[key];
+    if (!val || typeof val !== 'object') continue;
+    if (key.toLowerCase() === kw && val.categoryId) return val.categoryId;
   }
+
+  // Second pass: partial match at this level
+  for (const key of Object.keys(obj)) {
+    const val = obj[key];
+    if (!val || typeof val !== 'object') continue;
+    if (key.toLowerCase().includes(kw) && val.categoryId) return val.categoryId;
+  }
+
+  // Third pass: recurse into children
+  for (const key of Object.keys(obj)) {
+    const val = obj[key];
+    if (!val || typeof val !== 'object') continue;
+    // recurse into the node itself (its children are nested inside it)
+    const result = findCategoryId(val, keyword);
+    if (result) return result;
+  }
+
+  return null;
 }
 
 async function fetchPartsFromApi(vehicleId, categoryKeyword) {
@@ -240,40 +264,29 @@ async function fetchPartsFromApi(vehicleId, categoryKeyword) {
       `/category/search-for-the-commodity-group-tree-by-description/type-id/${TYPE_PASSENGER}/lang-id/${LANG_EN}/search-text/${encodeURIComponent(categoryKeyword)}`
     );
 
-    function findProductId(obj, keyword) {
-  if (!obj || typeof obj !== 'object') return null;
-  const keyLower = keyword.toLowerCase();
-  // Check direct match on this node's name
-  for (const key of Object.keys(obj)) {
-    const val = obj[key];
-    if (!val || typeof val !== 'object') continue;
-    if (key.toLowerCase() === keyLower && val.productId) return val.productId;
-  }
-  // Then try partial match
-  for (const key of Object.keys(obj)) {
-    const val = obj[key];
-    if (!val || typeof val !== 'object') continue;
-    if (key.toLowerCase().includes(keyLower) && val.productId) return val.productId;
-    if (val.children) {
-      const result = findProductId(val.children, keyword);
-      if (result) return result;
-    }
-  }
-  return null;
-}
+    console.log('Category search response keys:', Object.keys(catData || {}).slice(0, 5));
 
-    const productId = findProductId(catData);
-    if (!productId) return [];
+    const categoryId = findCategoryId(catData, categoryKeyword);
+    console.log('Resolved categoryId:', categoryId, 'for keyword:', categoryKeyword);
+
+    if (!categoryId) {
+      console.warn('No categoryId found for keyword:', categoryKeyword);
+      return [];
+    }
 
     const artData = await autopartsGet(
-      `/articles/list/type-id/${TYPE_PASSENGER}/vehicle-id/${vehicleId}/category-id/${productId}/lang-id/${LANG_EN}`
+      `/articles/list/type-id/${TYPE_PASSENGER}/vehicle-id/${vehicleId}/category-id/${categoryId}/lang-id/${LANG_EN}`
     );
 
+    console.log('Articles response keys:', Object.keys(artData || {}).slice(0, 5));
+
     const articles = artData?.articles || artData?.data || [];
+    console.log('Articles count:', articles.length);
 
     return articles.slice(0, 20).map(art => ({
       partNumber: art.articleNumber || art.articleNo || '',
-      partName:   art.description   || art.name      || categoryKeyword,
+      partName:   art.description   || art.articleProductName || art.name || categoryKeyword,
+      imageUrl:   art.s3image       || art.imageUrl           || '',
       oemNumbers: art.oemNumbers    || [],
     }));
   } catch (e) {
@@ -317,7 +330,7 @@ app.post('/api/decode-vin', async (req, res) => {
       try {
         const match = await findVehicleId(vehicle.make, vehicle.model, vehicle.year);
         if (match) {
-                    vehicle.kType = String(match.modelId);
+          vehicle.kType = String(match.modelId);
         }
       } catch (e) {
         console.warn('apiprofile VIN enrich failed:', e.message);
@@ -350,9 +363,11 @@ app.post('/api/parts', async (req, res) => {
       if (!vehicleId) {
         const match = await findVehicleId(vehicle.make, vehicle.model, vehicle.year);
         if (match) {
-                    vehicleId = match.modelId;
+          vehicleId = match.modelId;
         }
       }
+
+      console.log('Using vehicleId:', vehicleId);
 
       if (vehicleId) {
         const keyword  = CATEGORY_SEARCH_MAP[category] || category.replace(/_/g, ' ');
@@ -363,6 +378,7 @@ app.post('/api/parts', async (req, res) => {
           return {
             partNumber:      displayPartNumber,
             partName:        p.partName,
+            imageUrl:        p.imageUrl || '',
             category,
             amazonUrl:       '',
             affiliateUrl2:   '',
