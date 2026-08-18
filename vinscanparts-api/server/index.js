@@ -221,13 +221,13 @@ async function findVehicleVariant(modelId, year) {
     const yearNum = parseInt(year, 10);
 
     const matching = variants.filter(v => {
-      const from = parseInt(v.constructionFrom || v.yearFrom || '0', 10);
-      const to   = parseInt(v.constructionTo   || v.yearTo   || '9999', 10);
+      const from = parseInt((v.modelYearFrom || v.constructionFrom || v.yearFrom || '0').substring(0, 4), 10);
+      const to   = parseInt((v.modelYearTo   || v.constructionTo   || v.yearTo   || '9999').substring(0, 4), 10);
       return yearNum >= from && yearNum <= to;
     });
 
-    if (matching.length === 0) return variants[0]?.vehicleId || variants[0]?.id || null;
-    return matching[0].vehicleId || matching[0].id;
+    if (matching.length === 0) return variants[0]?.modelId || variants[0]?.vehicleId || variants[0]?.id || null;
+    return matching[0].modelId || matching[0].vehicleId || matching[0].id;
   } catch (e) {
     console.error('findVehicleVariant error:', e.message);
     return null;
