@@ -74,102 +74,85 @@ async function autopartsGet(endpoint) {
   return res.json();
 }
 
-// Map our category IDs → apiprofile.com search keyword
-const CATEGORY_SEARCH_MAP = {
-  oil_filter:              'Oil Filter',
-  air_filter:              'Air Filter',
-  cabin_filter:            'Cabin Air Filter',
-  fuel_filter:             'Fuel Filter',
-  transmission_filter:     'Transmission Filter',
-  hydraulic_filter:        'Hydraulic Filter',
-  brake_pads:              'Brake Pads',
-  brake_rotors:            'Brake Disc',
-  brake_calipers:          'Brake Caliper',
-  brake_drums:             'Brake Drum',
-  brake_shoes:             'Brake Shoes',
-  brake_lines:             'Brake Hose',
-  brake_master_cyl:        'Master Cylinder',
-  brake_booster:           'Brake Booster',
-  abs_sensor:              'ABS Sensor',
-  brake_hardware:          'Brake Hardware',
-  brake_fluid:             'Brake Fluid',
-  spark_plugs:             'Spark Plug',
-  ignition_coil:           'Ignition Coil',
-  ignition_wire_set:       'Ignition Wire',
-  distributor_cap:         'Distributor Cap',
-  serpentine_belt:         'V-Ribbed Belt',
-  timing_belt:             'Timing Belt',
-  timing_chain:            'Timing Chain',
-  water_pump:              'Water Pump',
-  thermostat:              'Thermostat',
-  head_gasket:             'Head Gasket',
-  valve_cover_gasket:      'Valve Cover Gasket',
-  oil_pan_gasket:          'Oil Pan Gasket',
-  intake_manifold_gasket:  'Intake Manifold Gasket',
-  engine_mount:            'Engine Mount',
-  oil_pump:                'Oil Pump',
-  piston_rings:            'Piston Ring',
-  crankshaft_seal:         'Crankshaft Seal',
-  alternator:              'Alternator',
-  starter_motor:           'Starter Motor',
-  battery:                 'Battery',
-  radiator:                'Radiator',
-  radiator_hose:           'Radiator Hose',
-  coolant_reservoir:       'Coolant Reservoir',
-  heater_core:             'Heater Core',
-  ac_compressor:           'Air Conditioning Compressor',
-  ac_condenser:            'Air Conditioning Condenser',
-  ac_filter_drier:         'Air Conditioning Dryer',
-  ac_expansion_valve:      'Expansion Valve',
-  blower_motor:            'Fan Motor',
-  shock_absorber:          'Shock Absorber',
-  strut_assembly:          'Strut Assembly',
-  control_arm:             'Control Arm',
-  ball_joint:              'Ball Joint',
-  tie_rod_end:             'Tie Rod End',
-  sway_bar_link:           'Sway Bar Link',
-  wheel_bearing:           'Wheel Bearing',
-  cv_axle:                 'CV Joint',
-  cv_boot:                 'CV Boot',
-  power_steering_pump:     'Steering Pump',
-  steering_rack:           'Steering Rack',
-  tie_rod_assembly:        'Tie Rod',
-  transmission_solenoid:   'Transmission Solenoid',
-  clutch_kit:              'Clutch Kit',
-  flywheel:                'Flywheel',
-  fuel_pump:               'Fuel Pump',
-  fuel_injector:           'Fuel Injector',
-  fuel_pressure_regulator: 'Fuel Pressure Regulator',
-  oxygen_sensor:           'Lambda Sensor',
-  mass_airflow_sensor:     'Air Flow Meter',
-  map_sensor:              'Intake Pressure Sensor',
-  throttle_body:           'Throttle Body',
-  egr_valve:               'EGR Valve',
-  pcv_valve:               'PCV Valve',
-  idle_air_valve:          'Idle Control Valve',
-  crankshaft_sensor:       'RPM Sensor',
-  camshaft_sensor:         'Camshaft Position Sensor',
-  knock_sensor:            'Knock Sensor',
-  coolant_temp_sensor:     'Coolant Temperature Sensor',
-  headlight_bulb:          'Headlight Bulb',
-  tail_light:              'Tail Light',
-  fog_light:               'Fog Light',
-  window_regulator:        'Window Regulator',
-  wiper_blade:             'Wiper Blade',
-  wiper_motor:             'Wiper Motor',
-  turn_signal_switch:      'Turn Signal Switch',
-  horn:                    'Horn',
-  exhaust_manifold:        'Exhaust Manifold',
-  catalytic_converter:     'Catalytic Converter',
-  muffler:                 'Silencer',
-  oxygen_sensor_exhaust:   'Lambda Sensor',
-  exhaust_gasket:          'Exhaust Gasket',
-  door_handle:             'Door Handle',
-  mirror:                  'Mirror',
-  bumper:                  'Bumper',
-  fender:                  'Wing',
-  hood:                    'Bonnet',
+// ── HARDCODED CATEGORY MAP ────────────────────────────────────────────────────
+// categoryIds verified directly from apiprofile.com API-GCA-009 for vehicleId 4963
+const CATEGORY_MAP = {
+  oil_filter:           100259,
+  air_filter:           706695,
+  cabin_filter:         706695,
+  fuel_filter:          103781,
+  spark_plug:           103935,
+  spark_plugs:          103935,
+  brake_pad:            104083,
+  brake_pads:           104083,
+  brake_disc:           104082,
+  brake_rotors:         104082,
+  brake_drum:           100579,
+  brake_drums:          100579,
+  brake_caliper:        104084,
+  brake_calipers:       104084,
+  brake_shoe:           104083,
+  brake_shoes:          104083,
+  brake_fluid:          706537,
+  brake_hose:           104087,
+  brake_lines:          104087,
+  brake_master_cyl:     100026,
+  shock_absorber:       103897,
+  strut_assembly:       103982,
+  suspension_strut:     103982,
+  ball_joint:           100581,
+  tie_rod:              100603,
+  tie_rod_end:          100603,
+  tie_rod_assembly:     100603,
+  wheel_bearing:        100839,
+  alternator:           104330,
+  starter:              103955,
+  starter_motor:        103955,
+  ignition_coil:        103938,
+  water_pump:           706706,
+  thermostat:           104063,
+  radiator_hose:        104072,
+  timing_chain:         103278,
+  clutch_kit:           104245,
+  oxygen_sensor:        104264,
+  mass_airflow_sensor:  103856,
+  mass_air_flow_sensor: 103856,
+  fuel_pump:            104956,
+  exhaust_system:       103984,
+  wiper_blade:          100597,
+  wiper_motor:          100134,
+  battery:              103966,
+  engine_oil:           706539,
+  transmission_fluid:   706536,
+  power_steering_fluid: 706233,
+  antifreeze:           104080,
+  coil_spring:          100113,
+  control_arm:          706384,
+  stabiliser_bar:       100590,
+  sway_bar_link:        100590,
+  cv_axle:              706379,
+  drive_shaft:          706379,
+  egr_valve:            100811,
+  serpentine_belt:      104329,
+  v_ribbed_belt:        104329,
+  radiator:             706212,
+  coolant_reservoir:    104070,
+  ac_compressor:        100354,
+  oil_pump:             100492,
+  window_regulator:     102691,
+  ignition_wire_set:    103935,
+  headlight_bulb:       104024,
+  tail_light:           104027,
+  fog_light:            104282,
+  horn:                 104019,
+  exhaust_manifold:     103833,
+  catalytic_converter:  100047,
 };
+
+function getCategoryId(categoryKey) {
+  const key = (categoryKey || '').toLowerCase().replace(/[\s-]/g, '_');
+  return CATEGORY_MAP[key] || null;
+}
 
 async function findVehicleId(make, model, year) {
   try {
@@ -212,66 +195,13 @@ async function findVehicleId(make, model, year) {
   }
 }
 
-/**
- * Walk the category search response (a nested object with string keys) and
- * find the categoryId that best matches the keyword.
- *
- * The response looks like:
- * {
- *   "Engine Oil": { categoryId: 100258, level: 1, children: { ... } },
- *   "Oil Filter":  { categoryId: 100259, level: 1, children: { ... } },
- *   ...
- * }
- *
- * Strategy:
- *  1. Exact key match (case-insensitive) → return that node's categoryId
- *  2. Key contains keyword → return that node's categoryId
- *  3. Recurse into children objects
- */
-function findCategoryId(obj, keyword) {
-  if (!obj || typeof obj !== 'object') return null;
-  const kw = keyword.toLowerCase();
-
-  // First pass: exact match at this level
-  for (const key of Object.keys(obj)) {
-    const val = obj[key];
-    if (!val || typeof val !== 'object') continue;
-    if (key.toLowerCase() === kw && val.categoryId) return val.categoryId;
-  }
-
-    // Second pass: partial match at this level (skip sub-categories with commas)
-  for (const key of Object.keys(obj)) {
-    const val = obj[key];
-    if (!val || typeof val !== 'object') continue;
-    if (key.includes(',')) continue;
-    if (key.toLowerCase().includes(kw) && val.categoryId) return val.categoryId;
-  }
-
-  // Third pass: recurse into children
-  for (const key of Object.keys(obj)) {
-    const val = obj[key];
-    if (!val || typeof val !== 'object') continue;
-    // recurse into the node itself (its children are nested inside it)
-    const result = findCategoryId(val, keyword);
-    if (result) return result;
-  }
-
-  return null;
-}
-
-async function fetchPartsFromApi(vehicleId, categoryKeyword) {
+async function fetchPartsFromApi(vehicleId, categoryKey) {
   try {
-    const catData = await autopartsGet(
-      `/category/search-for-the-commodity-group-tree-by-description/type-id/${TYPE_PASSENGER}/lang-id/${LANG_EN}/search-text/${encodeURIComponent(categoryKeyword)}`
-    );
-
-    console.log('Category search response keys:', Object.keys(catData || {}).slice(0, 5));
-
-    const categoryId = findCategoryId(catData, categoryKeyword);
-    console.log('Resolved categoryId:', categoryId, 'for keyword:', categoryKeyword);
+    const categoryId = getCategoryId(categoryKey);
+    console.log('Category key:', categoryKey, '→ categoryId:', categoryId);
 
     if (!categoryId) {
-      console.warn('No categoryId found for keyword:', categoryKeyword);
+      console.warn('No categoryId found for key:', categoryKey);
       return [];
     }
 
@@ -286,7 +216,7 @@ async function fetchPartsFromApi(vehicleId, categoryKeyword) {
 
     return articles.slice(0, 20).map(art => ({
       partNumber: art.articleNumber || art.articleNo || '',
-      partName:   art.description   || art.articleProductName || art.name || categoryKeyword,
+      partName:   art.description   || art.articleProductName || art.name || categoryKey,
       imageUrl:   art.s3image       || art.imageUrl           || '',
       oemNumbers: art.oemNumbers    || [],
     }));
@@ -371,8 +301,7 @@ app.post('/api/parts', async (req, res) => {
       console.log('Using vehicleId:', vehicleId);
 
       if (vehicleId) {
-        const keyword  = CATEGORY_SEARCH_MAP[category] || category.replace(/_/g, ' ');
-        const rawParts = await fetchPartsFromApi(vehicleId, keyword);
+        const rawParts = await fetchPartsFromApi(vehicleId, category);
 
         parts = rawParts.map(p => {
           const displayPartNumber = p.oemNumbers?.[0] || p.partNumber;
