@@ -178,8 +178,11 @@ async function findVehicleId(make, model, year) {
     const makeLower = make.toLowerCase();
 
     const manufacturer = makers.find(m =>
-      (m.manuName || m.name || '').toLowerCase().includes(makeLower)
-    );
+    (m.manuName || m.name || '').toLowerCase() === makeLower
+  ) || makers.find(m =>
+    (m.manuName || m.name || '').toLowerCase().includes(makeLower) &&
+    !(m.manuName || m.name || '').includes('(')
+  );
     if (!manufacturer) return null;
 
     const manufacturerId = manufacturer.manuId || manufacturer.id;
