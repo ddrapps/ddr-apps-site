@@ -3,7 +3,8 @@
  *
  * Handles:
  *   POST /api/decode-vin     — VIN decode via NHTSA (free) + apiprofile.com vehicle match
- *   POST /api/parts          — Parts lookup via apiprofile.com
+ *   GET  /api/categories     — Live category tree for a vehicle (API-GCA-003)
+ *   POST /api/parts          — Parts lookup via apiprofile.com + true OEM numbers (API-PAR-008)
  *   GET  /api/ebay-parts     — Live in-stock eBay listings via Browse API (with affiliate URLs)
  *   GET  /api/status         — Credential status
  *   GET  /api/history        — Scan history (SQLite)
@@ -75,102 +76,16 @@ async function autopartsGet(endpoint) {
   return res.json();
 }
 
-// Map our category IDs → apiprofile.com search keyword
-const CATEGORY_SEARCH_MAP = {
-  oil_filter:              'Oil Filter',
-  air_filter:              'Air Filter',
-  cabin_filter:            'Cabin Air Filter',
-  fuel_filter:             'Fuel Filter',
-  transmission_filter:     'Transmission Filter',
-  hydraulic_filter:        'Hydraulic Filter',
-  brake_pads:              'Brake Pads',
-  brake_rotors:            'Brake Disc',
-  brake_calipers:          'Brake Caliper',
-  brake_drums:             'Brake Drum',
-  brake_shoes:             'Brake Shoes',
-  brake_lines:             'Brake Hose',
-  brake_master_cyl:        'Master Cylinder',
-  brake_booster:           'Brake Booster',
-  abs_sensor:              'ABS Sensor',
-  brake_hardware:          'Brake Hardware',
-  brake_fluid:             'Brake Fluid',
-  spark_plugs:             'Spark Plug',
-  ignition_coil:           'Ignition Coil',
-  ignition_wire_set:       'Ignition Wire',
-  distributor_cap:         'Distributor Cap',
-  serpentine_belt:         'V-Ribbed Belt',
-  timing_belt:             'Timing Belt',
-  timing_chain:            'Timing Chain',
-  water_pump:              'Water Pump',
-  thermostat:              'Thermostat',
-  head_gasket:             'Head Gasket',
-  valve_cover_gasket:      'Valve Cover Gasket',
-  oil_pan_gasket:          'Oil Pan Gasket',
-  intake_manifold_gasket:  'Intake Manifold Gasket',
-  engine_mount:            'Engine Mount',
-  oil_pump:                'Oil Pump',
-  piston_rings:            'Piston Ring',
-  crankshaft_seal:         'Crankshaft Seal',
-  alternator:              'Alternator',
-  starter_motor:           'Starter Motor',
-  battery:                 'Battery',
-  radiator:                'Radiator',
-  radiator_hose:           'Radiator Hose',
-  coolant_reservoir:       'Coolant Reservoir',
-  heater_core:             'Heater Core',
-  ac_compressor:           'Air Conditioning Compressor',
-  ac_condenser:            'Air Conditioning Condenser',
-  ac_filter_drier:         'Air Conditioning Dryer',
-  ac_expansion_valve:      'Expansion Valve',
-  blower_motor:            'Fan Motor',
-  shock_absorber:          'Shock Absorber',
-  strut_assembly:          'Strut Assembly',
-  control_arm:             'Control Arm',
-  ball_joint:              'Ball Joint',
-  tie_rod_end:             'Tie Rod End',
-  sway_bar_link:           'Sway Bar Link',
-  wheel_bearing:           'Wheel Bearing',
-  cv_axle:                 'CV Joint',
-  cv_boot:                 'CV Boot',
-  power_steering_pump:     'Steering Pump',
-  steering_rack:           'Steering Rack',
-  tie_rod_assembly:        'Tie Rod',
-  transmission_solenoid:   'Transmission Solenoid',
-  clutch_kit:              'Clutch Kit',
-  flywheel:                'Flywheel',
-  fuel_pump:               'Fuel Pump',
-  fuel_injector:           'Fuel Injector',
-  fuel_pressure_regulator: 'Fuel Pressure Regulator',
-  oxygen_sensor:           'Lambda Sensor',
-  mass_airflow_sensor:     'Air Flow Meter',
-  map_sensor:              'Intake Pressure Sensor',
-  throttle_body:           'Throttle Body',
-  egr_valve:               'EGR Valve',
-  pcv_valve:               'PCV Valve',
-  idle_air_valve:          'Idle Control Valve',
-  crankshaft_sensor:       'RPM Sensor',
-  camshaft_sensor:         'Camshaft Position Sensor',
-  knock_sensor:            'Knock Sensor',
-  coolant_temp_sensor:     'Coolant Temperature Sensor',
-  headlight_bulb:          'Headlight Bulb',
-  tail_light:              'Tail Light',
-  fog_light:               'Fog Light',
-  window_regulator:        'Window Regulator',
-  wiper_blade:             'Wiper Blade',
-  wiper_motor:             'Wiper Motor',
-  turn_signal_switch:      'Turn Signal Switch',
-  horn:                    'Horn',
-  exhaust_manifold:        'Exhaust Manifold',
-  catalytic_converter:     'Catalytic Converter',
-  muffler:                 'Silencer',
-  oxygen_sensor_exhaust:   'Lambda Sensor',
-  exhaust_gasket:          'Exhaust Gasket',
-  door_handle:             'Door Handle',
-  mirror:                  'Mirror',
-  bumper:                  'Bumper',
-  fender:                  'Wing',
-  hood:                    'Bonnet',
-};
+async function autopartsPost(endpoint, body) {
+  const url = `${AUTOPARTS_BASE}${endpoint}`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: autopartsHeaders(),
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`autoparts POST ${res.status}: ${endpoint}`);
+  return res.json();
+}
 
 async function findVehicleId(make, model, year) {
   try {
@@ -213,49 +128,73 @@ async function findVehicleId(make, model, year) {
   }
 }
 
-function findCategoryId(obj, keyword) {
-  if (!obj || typeof obj !== 'object') return null;
-  const kw = keyword.toLowerCase();
+// ── CATEGORY TREE (API-GCA-003) ───────────────────────────────────────────────
+/**
+ * Fetch the live category tree for a specific vehicle kType.
+ * Returns a structured tree: { id, name, children: [...] }
+ * Only includes categories that actually have parts for this vehicle.
+ */
+async function fetchCategoryTree(vehicleId) {
+  const data = await autopartsGet(
+    `/category/type-id/${TYPE_PASSENGER}/products-groups-variant-3/${vehicleId}/lang-id/${LANG_EN}`
+  );
 
-  for (const key of Object.keys(obj)) {
-    const val = obj[key];
-    if (!val || typeof val !== 'object') continue;
-    if (key.toLowerCase() === kw && val.categoryId) return val.categoryId;
+  // The response is an object keyed by categoryId: { text, children }
+  // Convert it to a clean array for the app
+  function parseNode(obj) {
+    if (!obj || typeof obj !== 'object') return [];
+    return Object.entries(obj).map(([id, node]) => ({
+      id:       parseInt(id, 10),
+      name:     node.text || '',
+      children: parseNode(
+        Array.isArray(node.children) && node.children.length === 0
+          ? {}
+          : node.children
+      ),
+    })).filter(n => n.name);
   }
 
-  for (const key of Object.keys(obj)) {
-    const val = obj[key];
-    if (!val || typeof val !== 'object') continue;
-    if (key.includes(',')) continue;
-    if (key.toLowerCase().includes(kw) && val.categoryId) return val.categoryId;
-  }
-
-  for (const key of Object.keys(obj)) {
-    const val = obj[key];
-    if (!val || typeof val !== 'object') continue;
-    const result = findCategoryId(val, keyword);
-    if (result) return result;
-  }
-
-  return null;
+  return parseNode(data);
 }
 
-async function fetchPartsFromApi(vehicleId, categoryKeyword) {
+// ── OEM NUMBER ENRICHMENT (API-PAR-008) ───────────────────────────────────────
+/**
+ * Given a list of articleIds, fetch true OEM numbers for each.
+ * Returns a map of articleId → oemDisplayNo (first OEM number for that article).
+ * Non-deprecated endpoint: POST /api/articles/get-oems-by-list-of-articles-ids
+ */
+async function fetchOemNumbers(articleIds) {
+  if (!articleIds || articleIds.length === 0) return {};
+
   try {
-    const catData = await autopartsGet(
-      `/category/search-for-the-commodity-group-tree-by-description/type-id/${TYPE_PASSENGER}/lang-id/${LANG_EN}/search-text/${encodeURIComponent(categoryKeyword)}`
-    );
+    // API accepts max 100 article IDs per call
+    const ids = articleIds.slice(0, 100);
+    const data = await autopartsPost('/articles/get-oems-by-list-of-articles-ids', {
+      articleIds: ids,
+    });
 
-    console.log('Category search response keys:', Object.keys(catData || {}).slice(0, 5));
+    const articles = data?.articles || data?.data || [];
+    const oemMap = {};
 
-    const categoryId = findCategoryId(catData, categoryKeyword);
-    console.log('Resolved categoryId:', categoryId, 'for keyword:', categoryKeyword);
-
-    if (!categoryId) {
-      console.warn('No categoryId found for keyword:', categoryKeyword);
-      return [];
+    for (const article of articles) {
+      const id = String(article.articleId);
+      const oems = article.oemNo || [];
+      if (oems.length > 0) {
+        // Prefer the OEM number matching the vehicle make — fall back to first
+        oemMap[id] = oems[0].oemDisplayNo || '';
+      }
     }
 
+    console.log(`OEM numbers fetched for ${Object.keys(oemMap).length}/${ids.length} articles`);
+    return oemMap;
+  } catch (e) {
+    console.error('fetchOemNumbers error:', e.message);
+    return {};
+  }
+}
+
+async function fetchPartsFromApi(vehicleId, categoryId) {
+  try {
     const artData = await autopartsGet(
       `/articles/list/type-id/${TYPE_PASSENGER}/vehicle-id/${vehicleId}/category-id/${categoryId}/lang-id/${LANG_EN}`
     );
@@ -265,12 +204,22 @@ async function fetchPartsFromApi(vehicleId, categoryKeyword) {
     const articles = artData?.articles || artData?.data || [];
     console.log('Articles count:', articles.length);
 
-    return articles.slice(0, 20).map(art => ({
-      partNumber: art.articleNumber || art.articleNo || '',
-      partName:   art.description   || art.articleProductName || art.name || categoryKeyword,
-      imageUrl:   art.s3image       || art.imageUrl           || '',
-      oemNumbers: art.oemNumbers    || [],
-    }));
+    // Collect articleIds for OEM lookup
+    const articleIds = articles.slice(0, 20).map(a => a.articleId).filter(Boolean);
+
+    // Fetch true OEM numbers in one batch call
+    const oemMap = await fetchOemNumbers(articleIds);
+
+    return articles.slice(0, 20).map(art => {
+      const articleId  = String(art.articleId || '');
+      const oemNumber  = oemMap[articleId] || art.articleNumber || art.articleNo || '';
+      return {
+        articleId,
+        partNumber: oemNumber,
+        partName:   art.description || art.articleProductName || art.name || '',
+        imageUrl:   art.s3image     || art.imageUrl           || '',
+      };
+    });
   } catch (e) {
     console.error('fetchPartsFromApi error:', e.message);
     return [];
@@ -432,11 +381,31 @@ app.post('/api/decode-vin', async (req, res) => {
   }
 });
 
+// GET /api/categories?kType=4963
+// Returns the live category tree for the scanned vehicle
+app.get('/api/categories', async (req, res) => {
+  try {
+    const { kType } = req.query;
+    if (!kType) return res.status(400).json({ error: 'kType is required' });
+
+    if (!AUTOPARTS_KEY) return res.status(503).json({ error: 'Parts API not configured' });
+
+    const tree = await fetchCategoryTree(parseInt(kType, 10));
+    res.json(tree);
+  } catch (err) {
+    console.error('categories error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // POST /api/parts
+// Now accepts categoryId (number) from the live tree instead of a category string key
 app.post('/api/parts', async (req, res) => {
   try {
-    const { vehicle, category } = req.body;
-    if (!vehicle || !category) return res.status(400).json({ error: 'Missing vehicle or category' });
+    const { vehicle, category, categoryId } = req.body;
+    if (!vehicle || (!category && !categoryId)) {
+      return res.status(400).json({ error: 'Missing vehicle or category' });
+    }
 
     let parts = [];
 
@@ -453,22 +422,26 @@ app.post('/api/parts', async (req, res) => {
       console.log('Using vehicleId:', vehicleId);
 
       if (vehicleId) {
-        const keyword  = CATEGORY_SEARCH_MAP[category] || category.replace(/_/g, ' ');
-        const rawParts = await fetchPartsFromApi(vehicleId, keyword);
+        // Prefer live categoryId from the tree — fall back to legacy string lookup
+        const resolvedCategoryId = categoryId || null;
 
-        parts = rawParts.map(p => {
-          const displayPartNumber = p.oemNumbers?.[0] || p.partNumber;
-          return {
-            partNumber:      displayPartNumber,
-            partName:        p.partName,
-            imageUrl:        p.imageUrl || '',
-            category,
-            amazonUrl:       '',
-            affiliateUrl2:   '',
-            affiliateLabel2: 'Search on eBay',
-            isFeatured:      false,
-          };
-        });
+        if (!resolvedCategoryId) {
+          console.warn('No categoryId provided — parts cannot be fetched');
+          return res.json([]);
+        }
+
+        const rawParts = await fetchPartsFromApi(vehicleId, resolvedCategoryId);
+
+        parts = rawParts.map(p => ({
+          partNumber:      p.partNumber,
+          partName:        p.partName,
+          imageUrl:        p.imageUrl || '',
+          category:        category || String(categoryId),
+          amazonUrl:       '',
+          affiliateUrl2:   '',
+          affiliateLabel2: 'Search on eBay',
+          isFeatured:      false,
+        }));
       }
     }
 
