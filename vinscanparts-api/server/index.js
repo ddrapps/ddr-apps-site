@@ -154,7 +154,8 @@ async function fetchCategoryTree(vehicleId) {
     })).filter(n => n.name);
   }
 
-  return parseNode(data);
+  const tree = data.categories || data;
+return parseNode(tree);
 }
 
 // ── OEM NUMBER ENRICHMENT (API-PAR-008) ───────────────────────────────────────
