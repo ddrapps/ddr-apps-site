@@ -481,6 +481,22 @@ app.get('/api/ebay-parts', async (req, res) => {
   }
 });
 
+// GET /api/promo-button
+// Returns a backend-controlled affiliate button label + URL.
+// Update PROMO_BUTTON_LABEL and PROMO_BUTTON_URL in Render env vars to change it instantly.
+// Set PROMO_BUTTON_ENABLED=false to hide the button entirely.
+app.get('/api/promo-button', (req, res) => {
+  const enabled = process.env.PROMO_BUTTON_ENABLED !== 'false';
+  if (!enabled) return res.json({ enabled: false });
+
+  const label = process.env.PROMO_BUTTON_LABEL || '';
+  const url   = process.env.PROMO_BUTTON_URL   || '';
+
+  if (!label || !url) return res.json({ enabled: false });
+
+  res.json({ enabled: true, label, url });
+});
+
 // GET /api/status
 app.get('/api/status', (req, res) => {
   res.json({
