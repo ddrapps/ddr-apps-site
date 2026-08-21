@@ -342,7 +342,7 @@ async function decodeVinNhtsa(vin) {
     make:   r.Make        || '',
     model:  r.Model       || '',
     engine: r.DisplacementL
-              ? `${parseFloat(r.DisplacementL).toFixed(1)}L'
+              ? `${parseFloat(r.DisplacementL).toFixed(1)}L`
               : r.EngineConfiguration || '',
     trim:   r.Trim        || '',
     source: 'nhtsa',
