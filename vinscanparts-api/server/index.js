@@ -28,7 +28,7 @@ app.use(express.json());
 // ── APIPROFILE.COM HELPERS ────────────────────────────────────────────────────
 const AUTOPARTS_KEY  = process.env.AUTOPARTS_API_KEY || '';
 const AUTOPARTS_BASE = process.env.AUTOPARTS_BASE_URL || 'https://auto-parts-catalog.apiprofile.com/api';
-const LANG_EN        = 4;   // English
+const LANG_EN        = 37;   // English
 const COUNTRY_GLOBAL = 63;  // Germany = global default per docs
 const TYPE_PASSENGER = 1;   // Passenger Car
 
