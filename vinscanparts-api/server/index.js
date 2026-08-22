@@ -6,19 +6,17 @@
  *   GET  /api/categories     — Live category tree for a vehicle (API-GCA-003)
  *   POST /api/parts          — Parts lookup via apiprofile.com + true OEM numbers (API-PAR-008)
  *   GET  /api/ebay-parts     — Live in-stock eBay listings via Browse API (with affiliate URLs)
+ *   GET  /api/promo-button   — Backend-controlled affiliate promo button
  *   GET  /api/status         — Credential status
- *   GET  /api/history        — Scan history (SQLite)
- *   GET  /api/garage         — Saved vehicles (SQLite)
- *   POST /api/garage         — Save vehicle
- *   DELETE /api/garage/:id   — Remove vehicle
+ *
+ * NOTE: Scan history and garage are now stored on-device via expo-sqlite.
+ *       No SQLite database on the backend.
  */
 
 require('dotenv').config();
 
 const express  = require('express');
 const cors     = require('cors');
-const Database = require('better-sqlite3');
-const path     = require('path');
 const fetch    = (...args) => import('node-fetch').then(({ default: f }) => f(...args));
 
 const app  = express();
@@ -26,37 +24,6 @@ const PORT = process.env.PORT || 5000;
 
 app.use(cors());
 app.use(express.json());
-
-// ── SQLITE SETUP ──────────────────────────────────────────────────────────────
-const db = new Database(path.join(__dirname, 'vsp.db'));
-
-db.exec(`
-  CREATE TABLE IF NOT EXISTS scan_history (
-    id        INTEGER PRIMARY KEY AUTOINCREMENT,
-    vin       TEXT NOT NULL,
-    year      TEXT,
-    make      TEXT,
-    model     TEXT,
-    engine    TEXT,
-    trim      TEXT,
-    source    TEXT DEFAULT 'nhtsa',
-    scannedAt TEXT DEFAULT (datetime('now'))
-  );
-
-  CREATE TABLE IF NOT EXISTS garage (
-    id        INTEGER PRIMARY KEY AUTOINCREMENT,
-    nickname  TEXT NOT NULL,
-    vin       TEXT NOT NULL,
-    year      TEXT,
-    make      TEXT,
-    model     TEXT,
-    engine    TEXT,
-    trim      TEXT,
-    source    TEXT DEFAULT 'nhtsa',
-    kType     TEXT,
-    savedAt   TEXT DEFAULT (datetime('now'))
-  );
-`);
 
 // ── APIPROFILE.COM HELPERS ────────────────────────────────────────────────────
 const AUTOPARTS_KEY  = process.env.AUTOPARTS_API_KEY || '';
@@ -155,7 +122,7 @@ async function fetchCategoryTree(vehicleId) {
   }
 
   const tree = data.categories || data;
-return parseNode(tree);
+  return parseNode(tree);
 }
 
 // ── OEM NUMBER ENRICHMENT (API-PAR-008) ───────────────────────────────────────
@@ -386,11 +353,7 @@ app.post('/api/decode-vin', async (req, res) => {
       }
     }
 
-    db.prepare(`
-      INSERT INTO scan_history (vin, year, make, model, engine, trim, source)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).run(vehicle.vin, vehicle.year, vehicle.make, vehicle.model, vehicle.engine, vehicle.trim, vehicle.source);
-
+    // History is now stored on-device — no DB insert here
     res.json(vehicle);
   } catch (err) {
     console.error('decode-vin error:', err.message);
@@ -520,35 +483,6 @@ app.get('/api/status', (req, res) => {
     nhtsa:     true,
     ebay:      !!(EBAY_APP_ID && EBAY_CERT_ID),
   });
-});
-
-// GET /api/history
-app.get('/api/history', (req, res) => {
-  const rows = db.prepare('SELECT * FROM scan_history ORDER BY scannedAt DESC LIMIT 100').all();
-  res.json(rows);
-});
-
-// GET /api/garage
-app.get('/api/garage', (req, res) => {
-  const rows = db.prepare('SELECT * FROM garage ORDER BY savedAt DESC').all();
-  res.json(rows);
-});
-
-// POST /api/garage
-app.post('/api/garage', (req, res) => {
-  const { nickname, vin, year, make, model, engine, trim, source, kType } = req.body;
-  if (!nickname || !vin) return res.status(400).json({ error: 'nickname and vin required' });
-  const result = db.prepare(`
-    INSERT INTO garage (nickname, vin, year, make, model, engine, trim, source, kType)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(nickname, vin, year, make, model, engine, trim, source || 'nhtsa', kType || null);
-  res.json({ id: result.lastInsertRowid });
-});
-
-// DELETE /api/garage/:id
-app.delete('/api/garage/:id', (req, res) => {
-  db.prepare('DELETE FROM garage WHERE id = ?').run(req.params.id);
-  res.json({ ok: true });
 });
 
 // ── START ─────────────────────────────────────────────────────────────────────
