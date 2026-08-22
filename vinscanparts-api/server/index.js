@@ -160,11 +160,27 @@ return parseNode(tree);
 
 // ── OEM NUMBER ENRICHMENT (API-PAR-008) ───────────────────────────────────────
 /**
- * Given a list of articleIds, fetch true OEM numbers for each.
- * Returns a map of articleId → oemDisplayNo (first OEM number for that article).
- * Non-deprecated endpoint: POST /api/articles/get-oems-by-list-of-articles-ids
+ * Pick the best OEM number from a list.
+ * Prefers the number from the vehicle's own manufacturer (e.g. Honda for a Honda).
+ * Falls back to the first number if no brand match is found.
  */
-async function fetchOemNumbers(articleIds) {
+function pickBestOem(oems, vehicleMake) {
+  if (!oems || oems.length === 0) return null;
+  if (oems.length === 1) return oems[0];
+
+  const make = (vehicleMake || '').toLowerCase();
+  if (make) {
+    const brandMatch = oems.find(o =>
+      o.oemBrand && o.oemBrand.toLowerCase().includes(make)
+    );
+    if (brandMatch) return brandMatch;
+  }
+
+  // Fall back to first OEM number
+  return oems[0];
+}
+
+async function fetchOemNumbers(articleIds, vehicleMake) {
   if (!articleIds || articleIds.length === 0) return {};
 
   try {
@@ -181,8 +197,8 @@ async function fetchOemNumbers(articleIds) {
       const id = String(article.articleId);
       const oems = article.oemNo || [];
       if (oems.length > 0) {
-        // Prefer the OEM number matching the vehicle make — fall back to first
-        oemMap[id] = oems[0].oemDisplayNo || '';
+        const best = pickBestOem(oems, vehicleMake);
+        oemMap[id] = best?.oemDisplayNo || '';
       }
     }
 
@@ -194,7 +210,7 @@ async function fetchOemNumbers(articleIds) {
   }
 }
 
-async function fetchPartsFromApi(vehicleId, categoryId) {
+async function fetchPartsFromApi(vehicleId, categoryId, vehicleMake) {
   try {
     const artData = await autopartsGet(
       `/articles/list/type-id/${TYPE_PASSENGER}/vehicle-id/${vehicleId}/category-id/${categoryId}/lang-id/${LANG_EN}`
@@ -208,8 +224,8 @@ async function fetchPartsFromApi(vehicleId, categoryId) {
     // Collect articleIds for OEM lookup
     const articleIds = articles.slice(0, 20).map(a => a.articleId).filter(Boolean);
 
-    // Fetch true OEM numbers in one batch call
-    const oemMap = await fetchOemNumbers(articleIds);
+    // Fetch true OEM numbers — pass vehicle make so we pick the manufacturer's own number
+    const oemMap = await fetchOemNumbers(articleIds, vehicleMake);
 
     return articles.slice(0, 20).map(art => {
       const articleId  = String(art.articleId || '');
@@ -431,7 +447,7 @@ app.post('/api/parts', async (req, res) => {
           return res.json([]);
         }
 
-        const rawParts = await fetchPartsFromApi(vehicleId, resolvedCategoryId);
+        const rawParts = await fetchPartsFromApi(vehicleId, resolvedCategoryId, vehicle.make);
 
         parts = rawParts.map(p => ({
           partNumber:      p.partNumber,
