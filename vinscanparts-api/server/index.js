@@ -3,7 +3,7 @@
  *
  * Handles:
  *   POST /api/decode-vin     — VIN decode via NHTSA (free) + apiprofile.com vehicle match
- *   GET  /api/categories     — Live category tree for a vehicle (API-GCA-003)
+ *   GET  /api/categories     — Flat product list for a vehicle (API-GCA-008)
  *   POST /api/parts          — Parts lookup via apiprofile.com + true OEM numbers (API-PAR-008)
  *   GET  /api/ebay-parts     — Live in-stock eBay listings via Browse API (with affiliate URLs)
  *   GET  /api/promo-button   — Backend-controlled affiliate promo button
@@ -95,34 +95,21 @@ async function findVehicleId(make, model, year) {
   }
 }
 
-// ── CATEGORY TREE (API-GCA-003) ───────────────────────────────────────────────
+// ── PRODUCT LIST (API-GCA-008) ────────────────────────────────────────────────
 /**
- * Fetch the live category tree for a specific vehicle kType.
- * Returns a structured tree: { id, name, children: [...] }
- * Only includes categories that actually have parts for this vehicle.
+ * Fetch all product names for a specific vehicle — flat list, no tree.
+ * Uses API-GCA-008: /api/category/type-id/{typeId}/list-products-names
+ * Returns: [{ productId, productName }, ...]
  */
-async function fetchCategoryTree(vehicleId) {
+async function fetchProductNames(vehicleId) {
   const data = await autopartsGet(
-    `/category/type-id/${TYPE_PASSENGER}/products-groups-variant-3/${vehicleId}/lang-id/${LANG_EN}`
+    `/category/type-id/${TYPE_PASSENGER}/list-products-names?typeId=${TYPE_PASSENGER}&vehicleId=${vehicleId}&langId=${LANG_EN}`
   );
 
-  // The response is an object keyed by categoryId: { text, children }
-  // Convert it to a clean array for the app
-  function parseNode(obj) {
-    if (!obj || typeof obj !== 'object') return [];
-    return Object.entries(obj).map(([id, node]) => ({
-      id:       parseInt(id, 10),
-      name:     node.text || '',
-      children: parseNode(
-        Array.isArray(node.children) && node.children.length === 0
-          ? {}
-          : node.children
-      ),
-    })).filter(n => n.name);
-  }
-
-  const tree = data.categories || data;
-  return parseNode(tree);
+  const products = data?.products || data?.data || (Array.isArray(data) ? data : []);
+  return products
+    .filter(p => p.productId && p.productName)
+    .map(p => ({ id: p.productId, name: p.productName }));
 }
 
 // ── OEM NUMBER ENRICHMENT (API-PAR-008) ───────────────────────────────────────
@@ -362,7 +349,7 @@ app.post('/api/decode-vin', async (req, res) => {
 });
 
 // GET /api/categories?kType=4963
-// Returns the live category tree for the scanned vehicle
+// Returns flat product list for the scanned vehicle (API-GCA-008)
 app.get('/api/categories', async (req, res) => {
   try {
     const { kType } = req.query;
@@ -370,8 +357,8 @@ app.get('/api/categories', async (req, res) => {
 
     if (!AUTOPARTS_KEY) return res.status(503).json({ error: 'Parts API not configured' });
 
-    const tree = await fetchCategoryTree(parseInt(kType, 10));
-    res.json(tree);
+    const products = await fetchProductNames(parseInt(kType, 10));
+    res.json(products);
   } catch (err) {
     console.error('categories error:', err.message);
     res.status(500).json({ error: err.message });
@@ -379,12 +366,12 @@ app.get('/api/categories', async (req, res) => {
 });
 
 // POST /api/parts
-// Now accepts categoryId (number) from the live tree instead of a category string key
+// Accepts productId (number) from the flat product list (API-GCA-008)
 app.post('/api/parts', async (req, res) => {
   try {
-    const { vehicle, category, categoryId } = req.body;
-    if (!vehicle || (!category && !categoryId)) {
-      return res.status(400).json({ error: 'Missing vehicle or category' });
+    const { vehicle, category, categoryId, productId } = req.body;
+    if (!vehicle || (!category && !categoryId && !productId)) {
+      return res.status(400).json({ error: 'Missing vehicle or product' });
     }
 
     let parts = [];
@@ -402,21 +389,21 @@ app.post('/api/parts', async (req, res) => {
       console.log('Using vehicleId:', vehicleId);
 
       if (vehicleId) {
-        // Prefer live categoryId from the tree — fall back to legacy string lookup
-        const resolvedCategoryId = categoryId || null;
+        // Use productId (API-GCA-008) if provided, otherwise fall back to categoryId
+        const resolvedId = productId || categoryId || null;
 
-        if (!resolvedCategoryId) {
-          console.warn('No categoryId provided — parts cannot be fetched');
+        if (!resolvedId) {
+          console.warn('No productId or categoryId provided — parts cannot be fetched');
           return res.json([]);
         }
 
-        const rawParts = await fetchPartsFromApi(vehicleId, resolvedCategoryId, vehicle.make);
+        const rawParts = await fetchPartsFromApi(vehicleId, resolvedId, vehicle.make);
 
         parts = rawParts.map(p => ({
           partNumber:      p.partNumber,
           partName:        p.partName,
           imageUrl:        p.imageUrl || '',
-          category:        category || String(categoryId),
+          category:        category || String(resolvedId),
           amazonUrl:       '',
           affiliateUrl2:   '',
           affiliateLabel2: 'Search on eBay',
