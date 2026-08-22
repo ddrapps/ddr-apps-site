@@ -463,6 +463,14 @@ app.get('/api/promo-button', (req, res) => {
   res.json({ enabled: true, label, url });
 });
 
+// GET /api/privacy-url
+// Returns the privacy policy URL, controlled via PRIVACY_URL env var on Render.
+app.get('/api/privacy-url', (req, res) => {
+  const url = process.env.PRIVACY_URL || '';
+  if (!url) return res.status(404).json({ error: 'Not configured' });
+  res.json({ url });
+});
+
 // GET /api/status
 app.get('/api/status', (req, res) => {
   res.json({
